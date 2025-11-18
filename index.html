@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Painel – Visitas & Apoio (PECs)</title>
+
+    <link rel="stylesheet" href="styles.css" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- App -->
+    <script src="app.js" defer></script>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-title">
+                <h1>Visitas & Apoio – PECs</h1>
+                <p>Painel para o dirigente acompanhar as ações dos PECs por escola, tema e tipo de atendimento.</p>
+            </div>
+            <div class="header-links">
+                <!-- Ajuste o href abaixo para o arquivo do formulário dos PECs -->
+                <a href="./../">← Voltar ao cadastro</a>
+            </div>
+        </header>
+
+        <main class="panel-grid">
+            <!-- FILTROS -->
+            <section class="card col-12">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Filtros</div>
+                        <div class="card-subtitle">Combine escola, PEC, tipo, tema e período.</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="filters-grid">
+                        <div class="filter-item">
+                            <span class="filter-label">Escola</span>
+                            <select id="filter-escola">
+                                <option value="__all__">Todas as escolas</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-item">
+                            <span class="filter-label">PEC</span>
+                            <select id="filter-pec">
+                                <option value="__all__">Todos os PECs</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-item">
+                            <span class="filter-label">Tipo de registro</span>
+                            <select id="filter-tipo">
+                                <option value="__all__">Visitas e Apoios</option>
+                                <option value="Visita">Apenas Visitas</option>
+                                <option value="Apoio presencial">Apenas Apoios presenciais</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-item">
+                            <span class="filter-label">Tema / Componente</span>
+                            <select id="filter-tema">
+                                <option value="__all__">Todos os temas</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-item">
+                            <span class="filter-label">Data (início)</span>
+                            <input type="date" id="filter-data-inicio" />
+                        </div>
+
+                        <div class="filter-item">
+                            <span class="filter-label">Data (fim)</span>
+                            <input type="date" id="filter-data-fim" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MÉTRICAS -->
+            <section class="card col-12">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Resumo geral</div>
+                        <div class="card-subtitle">Números com base nos filtros aplicados.</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Registros (Visitas + Apoios)</div>
+                            <div class="metric-value" id="metric-total">–</div>
+                            <div class="metric-footnote" id="metric-total-footnote"></div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-label">Escolas atendidas</div>
+                            <div class="metric-value" id="metric-escolas">–</div>
+                            <div class="metric-footnote">Distintas dentro do filtro atual.</div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-label">Visitas</div>
+                            <div class="metric-value" id="metric-visitas">–</div>
+                            <div class="metric-footnote" id="metric-visitas-footnote"></div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-label">Apoios presenciais</div>
+                            <div class="metric-value" id="metric-apoios">–</div>
+                            <div class="metric-footnote" id="metric-apoios-footnote"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GRÁFICO POR ESCOLA -->
+            <section class="card col-8">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Distribuição por escola</div>
+                        <div class="card-subtitle">Comparativo de Visitas x Apoios em cada unidade.</div>
+                    </div>
+                    <span id="chart-badge" class="badge">Carregando…</span>
+                </div>
+                <div class="card-body">
+                    <div class="chart-wrapper">
+                        <canvas id="chart-escolas"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RANKING DE TEMAS -->
+            <section class="card col-4">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Temas mais trabalhados</div>
+                        <div class="card-subtitle">Ranking dentro do filtro atual.</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="temas-ranking" class="empty-state">
+                        Carregando informações de temas…
+                    </div>
+                </div>
+            </section>
+
+            <!-- TABELA DE REGISTROS -->
+            <section class="card col-12">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Registros detalhados</div>
+                        <div class="card-subtitle">Lista com todas as visitas e apoios filtrados.</div>
+                    </div>
+                    <span id="table-badge" class="badge">0 registros</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Tipo</th>
+                                    <th>Tema / Componente</th>
+                                    <th>Escola</th>
+                                    <th>PEC(s)</th>
+                                    <th>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-registros">
+                                <tr>
+                                    <td colspan="6" class="empty-state">
+                                        Carregando registros…
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+
+</html>
