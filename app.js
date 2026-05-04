@@ -9,14 +9,14 @@ let chartEscolas = null;
 function parseTipo(activityType) {
     if (!activityType) return null;
     const [prefix] = activityType.split(':');
-    return prefix ? prefix.trim() : null; // "Visita" ou "Apoio presencial"
+    return prefix ? prefix.trim() : null;
 }
 
 function parseTema(activityType) {
     if (!activityType) return '';
     const parts = activityType.split(':');
     if (parts.length < 2) return '';
-    return parts.slice(1).join(':').trim(); // tudo depois de "Visita:" ou "Apoio presencial:"
+    return parts.slice(1).join(':').trim();
 }
 
 function formatDate(iso) {
@@ -26,22 +26,39 @@ function formatDate(iso) {
     return `${d}/${m}/${y}`;
 }
 
+// ─── FETCH COM PAGINAÇÃO COMPLETA ────────────────────────────────────────────
+// O Supabase limita 1000 linhas por request. Esta função busca todas as páginas.
 async function fetchData() {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/pec_submissions?select=*`, {
-        headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
-        },
-    });
+    const PAGE_SIZE = 1000;
+    let allRows = [];
+    let offset = 0;
 
-    if (!res.ok) {
-        console.error('Erro ao carregar dados:', res.status, await res.text());
-        return [];
+    while (true) {
+        const url = `${SUPABASE_URL}/rest/v1/pec_submissions?select=*`
+            + `&order=visit_date.desc`
+            + `&limit=${PAGE_SIZE}&offset=${offset}`;
+
+        const res = await fetch(url, {
+            headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
+            },
+        });
+
+        if (!res.ok) {
+            console.error('Erro ao carregar dados:', res.status, await res.text());
+            break;
+        }
+
+        const page = await res.json();
+        allRows = allRows.concat(page);
+
+        // Se veio menos que PAGE_SIZE, chegamos ao fim
+        if (page.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
     }
 
-    const data = await res.json();
-    data.sort((a, b) => (b.visit_date || '').localeCompare(a.visit_date || ''));
-    return data;
+    return allRows;
 }
 
 function initFilters(data) {
@@ -60,13 +77,11 @@ function initFilters(data) {
         if (tema) temasSet.add(tema);
 
         if (row.pec_name) {
-            // pode ter mais de um nome separado por ; → quebra pra filtrar individualmente
             const nomes = row.pec_name.split(';').map((n) => n.trim()).filter(Boolean);
             nomes.forEach((n) => pecsSet.add(n));
         }
     });
 
-    // escolas
     [...escolasSet].sort().forEach((escola) => {
         const opt = document.createElement('option');
         opt.value = escola;
@@ -74,7 +89,6 @@ function initFilters(data) {
         escolaSelect.appendChild(opt);
     });
 
-    // temas
     [...temasSet].sort().forEach((tema) => {
         const opt = document.createElement('option');
         opt.value = tema;
@@ -82,7 +96,6 @@ function initFilters(data) {
         temaSelect.appendChild(opt);
     });
 
-    // PECs
     [...pecsSet].sort().forEach((pec) => {
         const opt = document.createElement('option');
         opt.value = pec;
@@ -90,7 +103,6 @@ function initFilters(data) {
         pecSelect.appendChild(opt);
     });
 
-    // Ajusta filtro "tipo" se vier ?tab=visitas / ?tab=apoio
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
     const filterTipo = document.getElementById('filter-tipo');
@@ -100,7 +112,6 @@ function initFilters(data) {
         filterTipo.value = 'Apoio presencial';
     }
 
-    // listeners
     [
         'filter-escola',
         'filter-pec',
@@ -128,7 +139,6 @@ function getFilteredData() {
         const rowData = row.visit_date || '';
         const rowPecRaw = (row.pec_name || '').trim();
 
-        // para o filtro, considera nomes individuais (se tiver ; )
         const rowPecList = rowPecRaw
             ? rowPecRaw.split(';').map((n) => n.trim()).filter(Boolean)
             : [];
@@ -166,7 +176,7 @@ function updateMetrics(filtered) {
     if (total === 0) {
         metricTotalFoot.textContent = 'Nenhum registro encontrado com o filtro atual.';
     } else {
-        metricTotalFoot.textContent = 'Somatório de registros exibidos na tabela.';
+        metricTotalFoot.textContent = `De ${allData.length} registros no total.`;
     }
 
     vFoot.textContent = total ? `${((visitas / total) * 100).toFixed(1)}% do total` : '';
